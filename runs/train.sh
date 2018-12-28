@@ -2,34 +2,34 @@
 
 # parameters
 DATA=$HOME/.datasets
-NAMEDATASET='cambia'
+NAMEDATASET='cambiaext'
 PROJECT='../out/netruns'
 EPOCHS=30
-BATCHSIZE=32
+BATCHSIZE=48
 LEARNING_RATE=0.0001
 MOMENTUM=0.5
 PRINT_FREQ=100
 WORKERS=20
-RESUME='chk000000.pth.tar'
+RESUME='chk000015.pth.tar' #model_best
 GPU=0
-ARCH='unetresnet'
-LOSS='wmce'
+ARCH='unetresnet34'
+LOSS='mcedice'
 OPT='adam'
 SCHEDULER='fixed'
 SNAPSHOT=5
-IMAGESIZE=128 #256 #64
+IMAGESIZE=256 #256 #64
 EXP_NAME='baseline_'$ARCH'_'$LOSS'_'$OPT'_'$NAMEDATASET'_0001'
 
 
-rm -rf $PROJECT/$EXP_NAME/$EXP_NAME.log
-rm -rf $PROJECT/$EXP_NAME/
-mkdir $PROJECT
-mkdir $PROJECT/$EXP_NAME
+#rm -rf $PROJECT/$EXP_NAME/$EXP_NAME.log
+#rm -rf $PROJECT/$EXP_NAME/
+#mkdir $PROJECT
+#mkdir $PROJECT/$EXP_NAME
 
 
 ## execute
 python ../train.py \
-$DATA \
+$DATA/$NAMEDATASET \
 --project=$PROJECT \
 --name=$EXP_NAME \
 --epochs=$EPOCHS \

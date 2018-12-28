@@ -14,8 +14,8 @@ import numpy as np
 import time
 from tqdm import tqdm
 
-from . import netmodels as nnmodels
-from . import netlosses as nloss
+from . import models as nnmodels
+from . import losses as nloss
 
 from pytvision.neuralnet import NeuralNetAbstract
 from pytvision.logger import Logger, AverageFilterMeter, AverageMeter
@@ -64,23 +64,42 @@ class SegmentationNeuralNet(NeuralNetAbstract):
         num_input_channels,  
         loss, 
         lr, 
-        momentum, 
         optimizer, 
-        lrsch,          
+        lrsch,    
+        momentum=0.9,
+        weight_decay=5e-4,      
         pretrained=False,
         size_input=388,
-
         ):
         """
-        Create            
+        Create
+        Args:
             -arch (string): architecture
+            -num_output_channels, 
+            -num_input_channels, 
             -loss (string):
             -lr (float): learning rate
             -optimizer (string) : 
             -lrsch (string): scheduler learning rate
             -pretrained (bool)
+            
         """
-        super(SegmentationNeuralNet, self).create( arch, num_output_channels, num_input_channels, loss, lr, momentum, optimizer, lrsch, pretrained)
+        
+        cfg_opt={ 'momentum':momentum, 'weight_decay':weight_decay } 
+        cfg_scheduler={ 'step_size':10, 'gamma':0.1  }
+        
+        super(SegmentationNeuralNet, self).create( 
+            arch, 
+            num_output_channels, 
+            num_input_channels, 
+            loss, 
+            lr, 
+            optimizer, 
+            lrsch, 
+            pretrained,
+            cfg_opt=cfg_opt, 
+            cfg_scheduler=cfg_scheduler
+        )
         self.size_input = size_input
         
         self.accuracy = nloss.Accuracy()
@@ -110,18 +129,16 @@ class SegmentationNeuralNet(NeuralNetAbstract):
             # measure data loading time
             data_time.update(time.time() - end)
             # get data (image, label, weight)
-            inputs, targets, weights, depth = sample['image'], sample['label'], sample['weight'], sample['metadata']
+            inputs, targets, weights = sample['image'], sample['label'], sample['weight']
             batch_size = inputs.shape[0]
 
             if self.cuda:
                 inputs  = inputs.cuda() 
                 targets = targets.cuda() 
                 weights = weights.cuda() 
-                depth   = depth.cuda() 
-            
-
+                
             # fit (forward)            
-            outputs = self.net(inputs, depth) if self.s_arch == 'dunet' else self.net(inputs)            
+            outputs = self.net(inputs)            
 
             # measure accuracy and record loss
             loss = self.criterion(outputs, targets, weights)            
@@ -161,17 +178,16 @@ class SegmentationNeuralNet(NeuralNetAbstract):
             for i, sample in enumerate(data_loader):
                 
                 # get data (image, label)
-                inputs, targets, weights, depth = sample['image'], sample['label'], sample['weight'], sample['metadata']
+                inputs, targets, weights = sample['image'], sample['label'], sample['weight'] 
                 batch_size = inputs.shape[0]
 
                 if self.cuda:
                     inputs  = inputs.cuda()
                     targets = targets.cuda()
                     weights = weights.cuda()
-                    depth   = depth.cuda()
-                 
+                                 
                 # fit (forward)
-                outputs = self.net(inputs, depth) if self.s_arch == 'dunet' else self.net(inputs)
+                outputs = self.net(inputs)
 
                 # measure accuracy and record loss
                 loss  = self.criterion(outputs, targets, weights)   
@@ -245,7 +261,7 @@ class SegmentationNeuralNet(NeuralNetAbstract):
                 x = inputs.cuda() if self.cuda else inputs    
                 
                 # fit (forward)
-                yhat = self.net(x, z) if self.s_arch == 'dunet' else self.net(x)
+                yhat = self.net(x)
                 yhat = F.softmax(yhat, dim=1)    
                 yhat = pytutils.to_np(yhat)
 
@@ -255,14 +271,13 @@ class SegmentationNeuralNet(NeuralNetAbstract):
         return ids, masks
 
     
-    def __call__(self, image, z):        
+    def __call__(self, image ):        
         
         # switch to evaluate mode
         self.net.eval()
         with torch.no_grad():
             x = image.cuda() if self.cuda else image    
-            z = z.cuda() if self.cuda else z 
-            yhat = self.net(x, z) if self.s_arch == 'dunet' else self.net(x)
+            yhat = self.net(x)
             yhat = F.softmax( yhat, dim=1 )
             #yhat = pytutils.to_np(yhat).transpose(2,3,1,0)[...,0]
 

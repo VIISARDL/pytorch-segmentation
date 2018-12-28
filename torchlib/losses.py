@@ -1,24 +1,8 @@
-
-
 import torch
+import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
-
-def to_gpu( x, cuda ):
-    return x.cuda() if cuda else x
-
-def one_hot_embedding(labels, num_classes):
-    '''Embedding labels to one-hot form.
-    Args:
-      labels: (LongTensor) class labels, sized [N,].
-      num_classes: (int) number of classes.
-    Returns:
-      (tensor) encoded labels, sized [N,#classes].
-    '''
-    y = torch.eye(num_classes)  # [D,D]
-    return y[labels.long()]     # [N,D]
-
+from torch.autograd import Variable
 
 
 class WeightedMCEloss(nn.Module):
@@ -62,6 +46,138 @@ class WeightedMCEFocalloss(nn.Module):
         
         return loss
 
+class WeightedBCELoss(nn.Module):
+    
+    def __init__(self ):
+        super(WeightedBCELoss, self).__init__()
+
+    def forward(self, y_pred, y_true, weight ):
+        
+        n, ch, h, w = y_pred.size()
+        y_true = centercrop(y_true, w, h)
+        weight = centercrop(weight, w, h )
+     
+        logit_y_pred = torch.log(y_pred / (1. - y_pred))
+        loss = weight * (logit_y_pred * (1. - y_true) + 
+                        torch.log(1. + torch.exp(-torch.abs(logit_y_pred))) + torch.clamp(-logit_y_pred, min=0.))
+        loss = torch.sum(loss) / torch.sum(weight)
+
+        return loss
+
+class BCELoss(nn.Module):
+    
+    def __init__(self):
+        super(BCELoss, self).__init__()
+        self.bce = nn.BCEWithLogitsLoss()
+
+    def forward(self, y_pred, y_true ):        
+        n, ch, h, w = y_pred.size()
+        y_true = centercrop(y_true, w, h)
+        loss = self.bce(y_pred, y_true)
+        return loss
+
+class WeightedBDiceLoss(nn.Module):
+    
+    def __init__(self ):
+        super(WeightedBDiceLoss, self).__init__()
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, y_pred, y_true, weight ):
+        
+        n, ch, h, w = y_pred.size()
+        y_true = centercrop(y_true, w, h)
+        weight = centercrop(weight, w, h )
+        y_pred = self.sigmoid(y_pred)
+        smooth = 1.
+        w, m1, m2 = weight, y_true, y_pred
+        score = (2. * torch.sum(w * m1 * m2) + smooth) / (torch.sum(w * m1) + torch.sum(w * m2) + smooth)
+        loss = 1. - torch.sum(score)
+        return loss
+
+
+class BDiceLoss(nn.Module):
+    
+    def __init__(self):
+        super(BDiceLoss, self).__init__()
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, y_pred, y_true, weight=None ):
+        
+        n, ch, h, w = y_pred.size()
+        y_true = centercrop(y_true, w, h)
+        y_pred = self.sigmoid(y_pred)
+
+        smooth = 1.
+        y_true_f = flatten(y_true)
+        y_pred_f = flatten(y_pred)
+        score = (2. * torch.sum(y_true_f * y_pred_f) + smooth) / (torch.sum(y_true_f) + torch.sum(y_pred_f) + smooth)
+        return 1. - score
+
+
+    
+class BLogDiceLoss(nn.Module):
+    
+    def __init__(self, classe = 1 ):
+        super(BLogDiceLoss, self).__init__()
+        self.sigmoid = nn.Sigmoid()
+        self.classe = classe
+
+    def forward(self, y_pred, y_true, weight=None ):
+        
+        n, ch, h, w = y_pred.size()
+        y_true = centercrop(y_true, w, h)
+        y_pred = self.sigmoid(y_pred)
+
+        eps = 1e-15
+        dice_target = (y_true[:,self.classe,...] == 1).float()
+        dice_output = y_pred[:,self.classe,...]
+        intersection = (dice_output * dice_target).sum()
+        union = dice_output.sum() + dice_target.sum() + eps
+
+        return -torch.log(2 * intersection / union)
+
+class WeightedMCEDiceLoss(nn.Module):
+    
+    def __init__(self, alpha=1.0, gamma=1.0  ):
+        super(WeightedMCEDiceLoss, self).__init__()
+        self.loss_mce = WeightedMCEFocalloss()
+        self.loss_dice = BLogDiceLoss()
+        self.alpha = alpha
+        self.gamma = gamma
+
+    def forward(self, y_pred, y_true, weight ):        
+        
+        alpha = self.alpha
+        weight = torch.pow(weight,self.gamma)
+        loss_dice = self.loss_dice(y_pred, y_true)
+        loss_mce = self.loss_mce(y_pred, y_true, weight)
+        loss = loss_mce + alpha*loss_dice        
+        return loss
+
+class MCEDiceLoss(nn.Module):
+    
+    def __init__(self, alpha=1.0, gamma=1.0  ):
+        super(MCEDiceLoss, self).__init__()
+        self.loss_mce = BCELoss()
+        self.loss_dice_fg = BLogDiceLoss( classe=1  )
+        self.loss_dice_th = BLogDiceLoss( classe=2  )
+        
+        self.alpha = alpha
+        self.gamma = gamma
+
+    def forward(self, y_pred, y_true, weight ):        
+        
+        alpha = self.alpha  
+        gamma = self.gamma
+
+        # bce(all_channels) +  dice_loss(mask_channel) + dice_loss(border_channel)   
+        loss_fg   = self.loss_dice_fg( y_pred, y_true )
+        loss_th   = self.loss_dice_th( y_pred, y_true )        
+        loss_all  = self.loss_mce( y_pred[:,:2,...], y_true[:,:2,...])
+        loss = loss_all + alpha*loss_fg + gamma*loss_th           
+
+
+        return loss
 
 
 class Accuracy(nn.Module):
@@ -76,17 +192,18 @@ class Accuracy(nn.Module):
         y_true = centercrop(y_true, w, h)
 
         prob = F.softmax(y_pred, dim=1).data
-        _, maxprob = torch.max(prob,1)
-                
+        prediction = torch.argmax(prob,1)
+
         accs = []
-        for c in range(int(self.bback_ignore), ch):
+        for c in range( int(self.bback_ignore), ch ):
             yt_c = y_true[:,c,...]
-            num = (((maxprob.eq(c) + yt_c.data.eq(1)).eq(2)).float().sum() + 1 )
+            num = (((prediction.eq(c) + yt_c.data.eq(1)).eq(2)).float().sum() + 1 )
             den = (yt_c.data.eq(1).float().sum() + 1)
             acc = (num/den)*100
             accs.append(acc)
-
-        return np.mean(accs)
+        
+        accs = torch.stack(accs)
+        return accs.mean()
 
 
 class Dice(nn.Module):
@@ -103,132 +220,30 @@ class Dice(nn.Module):
 
         prob = F.softmax(y_pred, dim=1)
         prob = prob.data
-        _, prediction = torch.max(prob, dim=1)
+        prediction = torch.argmax(prob, dim=1)
 
         y_pred_f = flatten(prediction).float()
         dices = []
-        for c in range(int(self.bback_ignore), ch):
+        for c in range(int(self.bback_ignore), ch ):
             y_true_f = flatten(y_true[:,c,...]).float()
             intersection = y_true_f * y_pred_f
             dice = (2. * torch.sum(intersection) / ( torch.sum(y_true_f) + torch.sum(y_pred_f) + eps ))*100
             dices.append(dice)
-
-        return np.mean(dices)
-
-## Baseline clasification
-
-class TopkAccuracy(nn.Module):
-    
-    def __init__(self, topk=(1,)):
-        super(TopkAccuracy, self).__init__()
-        self.topk = topk
-
-    def forward(self, output, target):
-        """Computes the precision@k for the specified values of k"""
         
-        maxk = max(self.topk)
-        batch_size = target.size(0)
-
-        pred = output.topk(maxk, 1, True, True)[1].t()
-        correct = pred.eq(target.view(1, -1).expand_as(pred))
-
-        res = []
-        for k in self.topk:
-            correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
-            res.append( correct_k.mul_(100.0 / batch_size) )
-
-        return res
+        dices = torch.stack(dices)
+        return dices.mean()
 
 
-
-class ConfusionMeter( object ):
-    """Maintains a confusion matrix for a given calssification problem.
-    https://github.com/pytorch/tnt/tree/master/torchnet/meter
-
-    The ConfusionMeter constructs a confusion matrix for a multi-class
-    classification problems. It does not support multi-label, multi-class problems:
-    for such problems, please use MultiLabelConfusionMeter.
-
-    Args:
-        k (int): number of classes in the classification problem
-        normalized (boolean): Determines whether or not the confusion matrix
-            is normalized or not
-
-    """
-
-    def __init__(self, k, normalized=False):
-        super(ConfusionMeter, self).__init__()
-        self.conf = np.ndarray((k, k), dtype=np.int32)
-        self.normalized = normalized
-        self.k = k
-        self.reset()
-
-    def reset(self):
-        self.conf.fill(0)
-
-    def add(self, predicted, target):
-        """Computes the confusion matrix of K x K size where K is no of classes
-
-        Args:
-            predicted (tensor): Can be an N x K tensor of predicted scores obtained from
-                the model for N examples and K classes or an N-tensor of
-                integer values between 0 and K-1.
-            target (tensor): Can be a N-tensor of integer values assumed to be integer
-                values between 0 and K-1 or N x K tensor, where targets are
-                assumed to be provided as one-hot vectors
-
-        """
-
-        predicted = predicted.cpu().numpy()
-        target = target.cpu().numpy()
-
-        assert predicted.shape[0] == target.shape[0], \
-            'number of targets and predicted outputs do not match'
-
-        if np.ndim(predicted) != 1:
-            assert predicted.shape[1] == self.k, \
-                'number of predictions does not match size of confusion matrix'
-            predicted = np.argmax(predicted, 1)
-        else:
-            assert (predicted.max() < self.k) and (predicted.min() >= 0), \
-                'predicted values are not between 1 and k'
-
-        onehot_target = np.ndim(target) != 1
-        if onehot_target:
-            assert target.shape[1] == self.k, \
-                'Onehot target does not match size of confusion matrix'
-            assert (target >= 0).all() and (target <= 1).all(), \
-                'in one-hot encoding, target values should be 0 or 1'
-            assert (target.sum(1) == 1).all(), \
-                'multi-label setting is not supported'
-            target = np.argmax(target, 1)
-        else:
-            assert (predicted.max() < self.k) and (predicted.min() >= 0), \
-                'predicted values are not between 0 and k-1'
-
-        # hack for bincounting 2 arrays together
-        x = predicted + self.k * target
-        bincount_2d = np.bincount(x.astype(np.int32),
-                                  minlength=self.k ** 2)
-        assert bincount_2d.size == self.k ** 2
-        conf = bincount_2d.reshape((self.k, self.k))
-
-        self.conf += conf
-
-    def value(self):
-        """
-        Returns:
-            Confustion matrix of K rows and K columns, where rows corresponds
-            to ground-truth targets and columns corresponds to predicted
-            targets.
-        """
-        if self.normalized:
-            conf = self.conf.astype(np.float32)
-            return conf / conf.sum(1).clip(min=1e-12)[:, None]
-        else:
-            return self.conf
-
-
+def to_one_hot(mask, size):    
+    n, c, h, w = size
+    ymask = torch.FloatTensor(size).zero_()
+    new_mask = torch.LongTensor(n,1,h,w)
+    if mask.is_cuda:
+        ymask = ymask.cuda(mask.get_device())
+        new_mask = new_mask.cuda(target.get_device())
+    new_mask[:,0,:,:] = torch.clamp(mask.data, 0, c-1)
+    ymask.scatter_(1, new_mask , 1.0)    
+    return Variable(ymask)
 
 def centercrop(image, w, h):        
     nt, ct, ht, wt = image.size()

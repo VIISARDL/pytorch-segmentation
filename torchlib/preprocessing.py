@@ -65,7 +65,7 @@ def create_groundtruth( masks ):
 def preprocessing( label ):    
     # preprocessing
     masks, bmask, bcontour, btouch, bcenters = create_groundtruth( label )
-    weight = weightmaps.getunetweightmap( bmask + 2*btouch, masks, w0=10, sigma=5, )
+    weight = weightmaps.getunetweightmap( (bmask>0) + 2*(btouch>0), masks, w0=10, sigma=5, )
     return bmask, bcontour, btouch, bcenters, weight
 
 

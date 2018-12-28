@@ -22,6 +22,7 @@ from pytvision import visualization as view
 from torchlib.datasets import dsxbdata
 from torchlib.segneuralnet import SegmentationNeuralNet
 
+from aug import get_transforms_aug, get_transforms_det
 
 from argparse import ArgumentParser
 import datetime
@@ -134,17 +135,7 @@ def main():
         folders_contours='touchs',
         count=10000,
         num_channels=num_channels,
-        transform=transforms.Compose([
-            mtrans.RandomCrop( (512, 512), limit=10, padding_mode=cv2.BORDER_REFLECT_101  ),
-            mtrans.ToResize( (imsize, imsize), resize_mode='crop', padding_mode=cv2.BORDER_REFLECT_101 ),
-            mtrans.RandomScale(factor=0.2, padding_mode=cv2.BORDER_REFLECT_101 ),
-            mtrans.RandomGeometricalTransform( angle=45, translation=0.2, warp=0.02, padding_mode=cv2.BORDER_REFLECT_101),
-            mtrans.ToRandomTransform( mtrans.HFlip(), prob=0.5 ),
-            mtrans.ToRandomTransform( mtrans.VFlip(), prob=0.5 ),            
-            #mtrans.ToResizeUNetFoV(imsize, cv2.BORDER_REFLECT_101),
-            mtrans.ToTensor(),
-            mtrans.ToNormalization(),
-            ])
+        transform=get_transforms_aug(imsize),
         )
 
     train_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True, 
@@ -154,16 +145,10 @@ def main():
     val_data = dsxbdata.DSXBExDataset(
         args.data, 
         dsxbdata.test, 
+        folders_contours='touchs',
         count=5000,
         num_channels=num_channels,
-        transform=transforms.Compose([
-            mtrans.RandomCrop( (512, 512), limit=10, padding_mode=cv2.BORDER_REFLECT_101  ),
-            mtrans.ToResize( (imsize, imsize), resize_mode='crop' ),
-            #mtrans.RandomCrop( (255,255), limit=50, padding_mode=cv2.BORDER_CONSTANT  ),
-            #mtrans.ToResizeUNetFoV(imsize, cv2.BORDER_REFLECT_101),
-            mtrans.ToTensor(),
-            mtrans.ToNormalization(), 
-            ])
+        transform=get_transforms_det(imsize),
         )
 
     val_loader = DataLoader(val_data, batch_size=args.batch_size, shuffle=True, 

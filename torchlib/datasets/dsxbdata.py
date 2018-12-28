@@ -56,14 +56,14 @@ class DSXBDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx):   
-
         image, label, contours, weight = self.data[idx] 
-        image_t = utility.to_channels(image, ch=self.num_channels )        
+        image_t = utility.to_channels(image, ch=self.num_channels )  
         label_t = np.zeros( (label.shape[0],label.shape[1],3) )
         label_t[:,:,0] = (label < 128)
         label_t[:,:,1] = (label > 128)
         label_t[:,:,2] = (contours > 128)
-        weight_t = weight[:,:,np.newaxis]      
+
+        weight_t = weight[:,:,np.newaxis]        
 
         obj = ObjectImageMaskAndWeightTransform( image_t, label_t, weight_t  )
         if self.transform: 
