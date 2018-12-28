@@ -53,11 +53,11 @@ def create_groundtruth( masks ):
         
     #get features
     edges      = np.array([ morph.binary_dilation(get_contour(x)) for x in masks ])       
-    bmask      = utils.tobinary(masks).astype( np.uint8 )    
+    bmask      = utils.tobinary( masks ).astype( np.uint8 )    
     btouch     = get_touchs( edges ).astype( np.uint8 )*255
-    bcontour   = utils.tobinary(edges).astype( np.uint8 ) 
+    bcontour   = utils.tobinary( edges ).astype( np.uint8 ) 
     centers    = np.array([ morph.binary_dilation(get_center(x)) for x in masks ]) 
-    bcenters   = utils.tobinary(centers).astype( np.uint8 ) 
+    bcenters   = utils.tobinary( centers ).astype( np.uint8 ) 
 
     return masks, bmask, bcontour, btouch, bcenters
 

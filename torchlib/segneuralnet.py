@@ -272,7 +272,6 @@ class SegmentationNeuralNet(NeuralNetAbstract):
 
     
     def __call__(self, image ):        
-        
         # switch to evaluate mode
         self.net.eval()
         with torch.no_grad():
@@ -280,7 +279,6 @@ class SegmentationNeuralNet(NeuralNetAbstract):
             yhat = self.net(x)
             yhat = F.softmax( yhat, dim=1 )
             #yhat = pytutils.to_np(yhat).transpose(2,3,1,0)[...,0]
-
         return yhat
 
 
