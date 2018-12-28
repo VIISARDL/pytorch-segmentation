@@ -30,11 +30,14 @@ To use Visdom in the browser:
 
 How use
 ------------
+### Step 1: Create dataset
 
-### Step 1: Train
+    python create_dataset_[name dataset]
+
+### Step 2: Train
 
     ./runs/train.sh
     
-### Step 2: Eval
+### Step 3: Eval
 For evaluation we used the notebook [eval.ipynb](./books/test_datacambia.ipynb)
 
