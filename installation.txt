@@ -1,0 +1,12 @@
+matplotlib
+opencv-python
+scikit-image
+scikit-fmm
+visdom
+scipy
+pandas
+h5py
+tqdm
+kaggle-cli
+kaggle
+scikit-learn
