@@ -4,13 +4,13 @@
 DATA=$HOME/.datasets
 NAMEDATASET='cambiaext'
 PROJECT='../out/netruns'
-EPOCHS=30
-BATCHSIZE=48
+EPOCHS=120
+BATCHSIZE=42
 LEARNING_RATE=0.0001
 MOMENTUM=0.5
 PRINT_FREQ=100
 WORKERS=20
-RESUME='chk000015.pth.tar' #model_best
+RESUME='chk000029.pth.tar' #model_best
 GPU=0
 ARCH='unetresnet34'
 LOSS='mcedice'
