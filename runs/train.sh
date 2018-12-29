@@ -5,19 +5,25 @@ DATA=$HOME/.datasets
 NAMEDATASET='cambiaext'
 PROJECT='../out/netruns'
 EPOCHS=120
-BATCHSIZE=42
+BATCHSIZETRAIN=42
+BATCHSIZETEST=42
 LEARNING_RATE=0.0001
 MOMENTUM=0.5
 PRINT_FREQ=100
 WORKERS=20
-RESUME='chk000029.pth.tar' #model_best
+RESUME='model_best.pth.tar' #model_best, chk000000
 GPU=0
 ARCH='unetresnet34'
 LOSS='mcedice'
 OPT='adam'
 SCHEDULER='fixed'
 SNAPSHOT=5
+COUNTTRAIN=10000
+COUNTTEST=5000
+IMAGECROP=512
 IMAGESIZE=256 #256 #64
+NUMCHANNELS=3
+NUMCLASSES=3
 EXP_NAME='baseline_'$ARCH'_'$LOSS'_'$OPT'_'$NAMEDATASET'_0001'
 
 
@@ -33,7 +39,12 @@ $DATA/$NAMEDATASET \
 --project=$PROJECT \
 --name=$EXP_NAME \
 --epochs=$EPOCHS \
---batch-size=$BATCHSIZE \
+--batch-size-train=$BATCHSIZETRAIN \
+--batch-size-test=$BATCHSIZETEST \
+--count-train=$COUNTTRAIN \
+--count-test=$COUNTTEST \
+--num-classes=$NUMCLASSES \
+--num-channels=$NUMCHANNELS \
 --learning-rate=$LEARNING_RATE \
 --momentum=$MOMENTUM \
 --print-freq=$PRINT_FREQ \
@@ -46,6 +57,7 @@ $DATA/$NAMEDATASET \
 --scheduler=$SCHEDULER \
 --arch=$ARCH \
 --image-size=$IMAGESIZE \
+--image-crop=$IMAGECROP \
 --finetuning \
 --parallel \
 2>&1 | tee -a $PROJECT/$EXP_NAME/$EXP_NAME.log \
