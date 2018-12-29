@@ -147,7 +147,7 @@ class SegmentationNeuralNet(NeuralNetAbstract):
               
             # optimizer
             self.optimizer.zero_grad()
-            (loss*batch_size).backward()
+            (loss).backward() #batch_size
             self.optimizer.step()
             
             # update

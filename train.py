@@ -44,8 +44,22 @@ def arg_parser():
                         help='number of total epochs to run')
     parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                         help='manual epoch number (useful on restarts)')
-    parser.add_argument('-b', '--batch-size', default=256, type=int, metavar='N', 
-                        help='mini-batch size (default: 256)')
+    
+    parser.add_argument('--batch-size-train', default=48, type=int, metavar='N', 
+                        help='mini-batch size of train set (default: 48)')    
+    parser.add_argument('--batch-size-test', default=48, type=int, metavar='N', 
+                        help='mini-batch size of test set (default: 48)') 
+    
+    parser.add_argument('--count-train', default=48, type=int, metavar='N', 
+                        help='count of train set (default: 100000)')    
+    parser.add_argument('--count-test', default=48, type=int, metavar='N', 
+                        help='count of test set (default: 5000)')     
+
+    parser.add_argument('--num-channels', default=3, type=int, metavar='N', 
+                        help='num channels (default: 3)')      
+    parser.add_argument('--num-classes', default=3, type=int, metavar='N', 
+                        help='num of classes (default: 3)') 
+    
     parser.add_argument('--lr', '--learning-rate', default=0.0001, type=float, metavar='LR',
                         help='initial learning rate')
     parser.add_argument('--momentum', type=float, default=0.5, metavar='M',
@@ -70,8 +84,12 @@ def arg_parser():
                         help='optimize function')
     parser.add_argument('--scheduler', default='fixed', type=str,
                         help='scheduler function for learning rate')
-    parser.add_argument('--image-size', default=388, type=int, metavar='N',
+
+    parser.add_argument('--image-crop', default=512, type=int, metavar='N',
+                        help='image crop')
+    parser.add_argument('--image-size', default=256, type=int, metavar='N',
                         help='image size')
+    
     parser.add_argument('--parallel', action='store_true', default=False,
                     help='Parallel')
     return parser
@@ -81,13 +99,17 @@ def arg_parser():
 def main():
     
     # parameters
-    parser = arg_parser()
-    args = parser.parse_args()
-    imsize = args.image_size
-    parallel=args.parallel
-    num_classes=3
-    num_channels=3
-    
+    parser       = arg_parser()
+    args         = parser.parse_args()
+    parallel     = args.parallel
+    imcrop       = args.image_crop
+    imsize       = args.image_size
+    num_classes  = args.num_classes
+    num_channels = args.num_channels    
+    count_train  = args.count_train #10000
+    count_test   = args.count_test #5000
+    folders_contours ='touchs'
+        
     print('Baseline clasification {}!!!'.format(datetime.datetime.now()))
     print('\nArgs:')
     [ print('\t* {}: {}'.format(k,v) ) for k,v in vars(args).items() ]
@@ -132,26 +154,26 @@ def main():
     train_data = dsxbdata.DSXBExDataset(
         args.data, 
         dsxbdata.train, 
-        folders_contours='touchs',
-        count=10000,
+        folders_contours=folders_contours,
+        count=count_train,
         num_channels=num_channels,
-        transform=get_transforms_aug(imsize),
+        transform=get_transforms_aug(imsize, imcrop),
         )
 
-    train_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True, 
+    train_loader = DataLoader(train_data, batch_size=args.batch_size_train, shuffle=True, 
         num_workers=args.workers, pin_memory=network.cuda, drop_last=True )
     
     # validate dataset
     val_data = dsxbdata.DSXBExDataset(
         args.data, 
         dsxbdata.test, 
-        folders_contours='touchs',
-        count=5000,
+        folders_contours=folders_contours,
+        count=count_test,
         num_channels=num_channels,
-        transform=get_transforms_det(imsize),
+        transform=get_transforms_det( imsize, imcrop ),
         )
 
-    val_loader = DataLoader(val_data, batch_size=args.batch_size, shuffle=True, 
+    val_loader = DataLoader(val_data, batch_size=args.batch_size_test, shuffle=True, 
         num_workers=args.workers, pin_memory=network.cuda, drop_last=False)
        
     # print neural net class

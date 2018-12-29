@@ -156,7 +156,7 @@ class WeightedMCEDiceLoss(nn.Module):
 
 class MCEDiceLoss(nn.Module):
     
-    def __init__(self, alpha=1.0, gamma=1.0  ):
+    def __init__(self, alpha=1.0, gamma=1.5  ):
         super(MCEDiceLoss, self).__init__()
         self.loss_mce = BCELoss()
         self.loss_dice_fg = BLogDiceLoss( classe=1  )
@@ -170,13 +170,11 @@ class MCEDiceLoss(nn.Module):
         alpha = self.alpha  
         gamma = self.gamma
 
-        # bce(all_channels) +  dice_loss(mask_channel) + dice_loss(border_channel)   
-        loss_fg   = self.loss_dice_fg( y_pred, y_true )
-        loss_th   = self.loss_dice_th( y_pred, y_true )        
+        # bce(all_channels) +  dice_loss(mask_channel) + dice_loss(border_channel)  
         loss_all  = self.loss_mce( y_pred[:,:2,...], y_true[:,:2,...])
-        loss = loss_all + alpha*loss_fg + gamma*loss_th           
-
-
+        loss_fg   = self.loss_dice_fg( y_pred, y_true )
+        loss_th   = self.loss_dice_th( y_pred, y_true )                
+        loss      = loss_all + alpha*loss_fg + gamma*loss_th         
         return loss
 
 
