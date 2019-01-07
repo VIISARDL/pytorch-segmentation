@@ -155,8 +155,8 @@ class DSDataset(Dataset):
         image, label = self.data[idx] 
         image_t = utility.to_channels(image, ch=self.num_channels )  
         label_t = np.zeros( (label.shape[0],label.shape[1],2) )
-        label_t[:,:,0] = (label < 128)
-        label_t[:,:,1] = (label > 128)            
+        label_t[:,:,0] = (label < 1)
+        label_t[:,:,1] = (label >= 1)            
 
         obj = ObjectImageAndMaskTransform( image_t, label_t  )
         if self.transform: 
