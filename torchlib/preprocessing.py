@@ -44,7 +44,6 @@ def get_touchs( edges ):
     I = morph.binary_dilation( I, morph.square(3) )    
     return I
 
-
 def create_groundtruth( masks ): 
     #processing mask
     masks = (masks > 0).astype(np.uint32)
@@ -58,7 +57,6 @@ def create_groundtruth( masks ):
     bcontour   = utils.tobinary( edges ).astype( np.uint8 ) 
     centers    = np.array([ morph.binary_dilation(get_center(x)) for x in masks ]) 
     bcenters   = utils.tobinary( centers ).astype( np.uint8 ) 
-
     return masks, bmask, bcontour, btouch, bcenters
 
 

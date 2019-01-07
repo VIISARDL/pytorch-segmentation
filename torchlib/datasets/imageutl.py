@@ -287,9 +287,8 @@ class dsxbImageProvide(dataProvide):
 
 class cambiaProvide(dataProvide):
     '''
-    Mnagement for Cambia dataset
+    Provide for Cambia dataset
     '''
-
     @classmethod
     def create(
         cls, 
@@ -309,8 +308,8 @@ class cambiaProvide(dataProvide):
     def __init__(self,
         base_folder,    
         sub_folder,     
-        folders_image = 'images',
-        folders_label = 'labels',
+        folders_image='images',
+        folders_label='labels',
         pref_image='',
         pref_label='',
         ):

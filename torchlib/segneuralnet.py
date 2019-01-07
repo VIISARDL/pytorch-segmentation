@@ -86,7 +86,7 @@ class SegmentationNeuralNet(NeuralNetAbstract):
         """
         
         cfg_opt={ 'momentum':momentum, 'weight_decay':weight_decay } 
-        cfg_scheduler={ 'step_size':10, 'gamma':0.1  }
+        cfg_scheduler={ 'step_size':100, 'gamma':0.1  }
         
         super(SegmentationNeuralNet, self).create( 
             arch, 

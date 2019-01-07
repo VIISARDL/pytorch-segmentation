@@ -174,7 +174,7 @@ def main():
         )
 
     val_loader = DataLoader(val_data, batch_size=args.batch_size_test, shuffle=True, 
-        num_workers=args.workers, pin_memory=network.cuda, drop_last=False)
+        num_workers=args.workers, pin_memory=network.cuda, drop_last=True)
        
     # print neural net class
     print('SEG-Torch: {}'.format(datetime.datetime.now()) )

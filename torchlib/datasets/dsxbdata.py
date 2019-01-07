@@ -5,7 +5,7 @@ import numpy as np
 
 from torch.utils.data import Dataset
 
-from pytvision.transforms.aumentation import  ObjectImageMaskAndWeightTransform
+from pytvision.transforms.aumentation import  ObjectImageMaskAndWeightTransform, ObjectImageAndMaskTransform
 from pytvision.datasets import utility
 
 from .imageutl import dsxbExProvide
@@ -129,3 +129,38 @@ class DSXBExDataset(Dataset):
         if self.transform: 
             obj = self.transform( obj )
         return obj.to_dict()
+
+    
+    
+class DSDataset(Dataset):
+    '''Mnagement for Data Segmentation image dataset
+    Args
+    '''
+
+    def __init__(self, 
+        data,
+        ext='png',
+        num_channels=3,
+        transform=None,
+        ):
+           
+        self.data = data
+        self.transform = transform    
+        self.num_channels = num_channels
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):   
+        image, label = self.data[idx] 
+        image_t = utility.to_channels(image, ch=self.num_channels )  
+        label_t = np.zeros( (label.shape[0],label.shape[1],2) )
+        label_t[:,:,0] = (label < 128)
+        label_t[:,:,1] = (label > 128)            
+
+        obj = ObjectImageAndMaskTransform( image_t, label_t  )
+        if self.transform: 
+            obj = self.transform( obj )
+        return obj.to_dict()
+
+
