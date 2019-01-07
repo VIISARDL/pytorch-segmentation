@@ -1,41 +1,7 @@
 import numpy as np
 from sklearn.metrics.pairwise import pairwise_distances
 from tqdm import tqdm
-
-from pycocotools import mask as cocomask
-
-def rle_from_binary(prediction):
-    prediction = np.asfortranarray(prediction)
-    return cocomask.encode(prediction)
-
-
-def binary_from_rle(rle):
-    return cocomask.decode(rle)
-
-
-def get_segmentations(labeled):
-    nr_true = labeled.max()
-    segmentations = []
-    for i in range(1, nr_true + 1):
-        msk = labeled == i
-        segmentation = rle_from_binary(msk.astype('uint8'))
-        segmentation['counts'] = segmentation['counts'].decode("UTF-8")
-        segmentations.append(segmentation)
-    return segmentations
-
-###
-
-
-def decompose(labeled):
-    nr_true = labeled.max()
-    masks = []
-    for i in range(1, nr_true + 1):
-        msk = labeled.copy()
-        msk[msk != i] = 0.
-        msk[msk == i] = 255.
-        masks.append(msk)
-    if not masks: return np.array([labeled])
-    else: return np.array(masks)
+from .utils import decompose
 
 
 def iou(gt, pred):
@@ -51,25 +17,16 @@ def iou(gt, pred):
     return intersection / union
 
 def compute_ious(gt, predictions):
+    gt_ = gt
+    predictions_ = predictions
     #gt_ = decompose(gt)
     #predictions_ = decompose(predictions)
-    #gt_ = np.asarray([el.flatten() for el in gt_])
-    #predictions_ = np.asarray([el.flatten() for el in predictions_])
-    #ious = pairwise_distances(X=gt_, Y=predictions_, metric=iou)   
-    #return ious
+    gt_ = np.asarray([el.flatten() for el in gt_])
+    predictions_ = np.asarray([el.flatten() for el in predictions_])
+    ious = pairwise_distances(X=gt_, Y=predictions_, metric=iou)
+    return ious
 
-    gt_ = get_segmentations(gt)
-    predictions_ = get_segmentations(predictions)
 
-    if len(predictions_) == 0:
-        return np.zeros((1, 1))
-    else:
-        iscrowd = [0 for _ in predictions_]
-        ious = cocomask.iou(gt_, predictions_, iscrowd)
-        if not np.array(ious).size:
-            ious = np.zeros((1, 1))
-        return ious
-    
 def compute_precision_at(ious, threshold):
     mx1 = np.max(ious, axis=0)
     mx2 = np.max(ious, axis=1)
