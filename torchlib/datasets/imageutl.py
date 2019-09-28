@@ -446,3 +446,60 @@ class nucleiProvide(dataProvide):
 
         self.data = data
 
+class nucleiProvide2(dataProvide):
+
+    def __init__(self,
+        base_folder,    
+        sub_folder,     
+        folders_images='images',
+        folders_labels='labels',
+        folders_contours='contours',
+        ext='png',
+        ):
+        super(nucleiProvide2, self).__init__( );        
+        base_folder = os.path.expanduser( base_folder )
+                
+        self.path = base_folder
+        self.subpath = sub_folder
+        self.folders_images = folders_images
+        self.folders_labels = folders_labels
+        self.folders_contours = folders_contours
+        
+        self.pathimages   = os.path.join( base_folder, sub_folder, folders_images   )
+        self.pathlabels   = os.path.join( base_folder, sub_folder, folders_labels   )
+        self.pathcontours = os.path.join( base_folder, sub_folder, folders_contours )
+        
+        self.data = [             
+            (
+                f, 
+                os.path.join(self.pathimages,   '{}'.format(f) ),
+                os.path.join(self.pathlabels,   '{}'.format(f) ),
+                os.path.join(self.pathcontours, '{}'.format(f) ),
+            )
+            for f in sorted(os.listdir(self.pathimages)) if f.split('.')[-1] == ext             
+            ];
+
+    def getid(self): return self.data[self.index][0]
+
+
+    def __getitem__(self, i):
+                
+        #check index
+        if i<0 and i>len(self.data): raise ValueError('Index outside range');
+        self.index = i;                 
+        
+        #load image
+        image_pathname = self.data[i][1]; 
+        image = cv2.imread(image_pathname)
+        
+        #load label
+        label_pathname = self.data[i][2]; 
+        label = cv2.imread(label_pathname, 0)
+
+        #load contours
+        contours_pathname = self.data[i][3]; 
+        contours = cv2.imread(contours_pathname, 0)
+
+        return image, label, contours
+
+ 

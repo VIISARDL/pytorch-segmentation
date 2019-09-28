@@ -8,4 +8,5 @@ from .ssegnet import *
 from .unetvgg16 import *
 from .fcn import *
 from .albu import *
-
+from .linknet import *
+from .segnet import *

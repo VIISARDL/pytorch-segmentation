@@ -129,13 +129,13 @@ class SegmentationNeuralNet(NeuralNetAbstract):
             # measure data loading time
             data_time.update(time.time() - end)
             # get data (image, label, weight)
-            inputs, targets, weights = sample['image'], sample['label'], sample['weight']
+            inputs, targets, weights = sample['image'], sample['label'], None
             batch_size = inputs.shape[0]
 
             if self.cuda:
                 inputs  = inputs.cuda() 
                 targets = targets.cuda() 
-                weights = weights.cuda() 
+                
                 
             # fit (forward)            
             outputs = self.net(inputs)            
@@ -147,7 +147,7 @@ class SegmentationNeuralNet(NeuralNetAbstract):
               
             # optimizer
             self.optimizer.zero_grad()
-            (loss).backward() #batch_size
+            (batch_size*loss).backward() #batch_size
             self.optimizer.step()
             
             # update
@@ -178,13 +178,12 @@ class SegmentationNeuralNet(NeuralNetAbstract):
             for i, sample in enumerate(data_loader):
                 
                 # get data (image, label)
-                inputs, targets, weights = sample['image'], sample['label'], sample['weight'] 
+                inputs, targets, weights = sample['image'], sample['label'], None 
                 batch_size = inputs.shape[0]
 
                 if self.cuda:
                     inputs  = inputs.cuda()
                     targets = targets.cuda()
-                    weights = weights.cuda()
                                  
                 # fit (forward)
                 outputs = self.net(inputs)
@@ -234,7 +233,7 @@ class SegmentationNeuralNet(NeuralNetAbstract):
             maxprob = torch.argmax(prob, 0)
             
             self.visheatmap.show('Label', targets.data.cpu()[0].numpy()[1,:,:] )
-            self.visheatmap.show('Weight map', weights.data.cpu()[0].numpy()[0,:,:])
+            #self.visheatmap.show('Weight map', weights.data.cpu()[0].numpy()[0,:,:])
             self.visheatmap.show('Image', inputs.data.cpu()[0].numpy()[0,:,:])
             self.visheatmap.show('Max prob',maxprob.cpu().numpy().astype(np.float32) )
             for k in range(prob.shape[0]):                
