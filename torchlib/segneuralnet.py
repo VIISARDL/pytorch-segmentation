@@ -16,6 +16,7 @@ from tqdm import tqdm
 
 from . import models as nnmodels
 from . import losses as nloss
+from . import metrics
 
 from pytvision.neuralnet import NeuralNetAbstract
 from pytvision.logger import Logger, AverageFilterMeter, AverageMeter
@@ -107,7 +108,7 @@ class SegmentationNeuralNet(NeuralNetAbstract):
        
         # Set the graphic visualization
         self.logger_train = Logger( 'Train', ['loss'], ['accs', 'dices'], self.plotter  )
-        self.logger_val   = Logger( 'Val  ', ['loss'], ['accs', 'dices'], self.plotter )
+        self.logger_val   = Logger( 'Val  ', ['loss'], ['accs', 'dices', 'PQ'], self.plotter )
 
         self.visheatmap = gph.HeatMapVisdom(env_name=self.nameproject, heatsize=(100,100) )
         self.visimshow = gph.ImageVisdom(env_name=self.nameproject, imsize=(100,100) )
@@ -135,15 +136,16 @@ class SegmentationNeuralNet(NeuralNetAbstract):
             if self.cuda:
                 inputs  = inputs.cuda() 
                 targets = targets.cuda() 
-                
+            #print(inputs.shape, targets.shape)
                 
             # fit (forward)            
             outputs = self.net(inputs)            
 
             # measure accuracy and record loss
-            loss = self.criterion(outputs, targets, weights)            
-            accs = self.accuracy(outputs, targets )
-            dices = self.dice( outputs, targets )
+            loss  = self.criterion(outputs, targets, weights)            
+            accs  = self.accuracy(outputs, targets)
+            dices = self.dice(outputs, targets)
+            #pq    = metrics.pq_metric(outputs.cpu().detach().numpy(), targets.cpu().detach().numpy())
               
             # optimizer
             self.optimizer.zero_grad()
@@ -152,10 +154,14 @@ class SegmentationNeuralNet(NeuralNetAbstract):
             
             # update
             self.logger_train.update(
-                {'loss': loss.data[0] },
-                {'accs': accs, 'dices': dices },      
-                batch_size,
+                {'loss': loss.item() },
+                {'accs': accs.item(), 
+                 #'PQ': pq,
+                 'dices': dices.item() },      
+                batch_size,          
                 )
+
+            
             
             # measure elapsed time
             batch_time.update(time.time() - end)
@@ -191,16 +197,21 @@ class SegmentationNeuralNet(NeuralNetAbstract):
                 # measure accuracy and record loss
                 loss  = self.criterion(outputs, targets, weights)   
                 accs  = self.accuracy(outputs, targets )
-                dices = self.dice( outputs, targets )                 
+                dices = self.dice( outputs, targets )   
 
+                pq    = metrics.pq_metric(targets, outputs)
+              
                 # measure elapsed time
                 batch_time.update(time.time() - end)
                 end = time.time()
 
                 # update
+                #print(loss.item(), accs, dices, batch_size)
                 self.logger_val.update( 
-                    {'loss': loss.data[0] },
-                    {'accs': accs, 'dices': dices },      
+                    {'loss': loss.item() },
+                    {'accs': accs.item(), 
+                     'PQ': pq,
+                     'dices': dices.item() },      
                     batch_size,          
                     )
 
@@ -216,6 +227,8 @@ class SegmentationNeuralNet(NeuralNetAbstract):
         #save validation loss
         self.vallosses = self.logger_val.info['loss']['loss'].avg
         acc = self.logger_val.info['metrics']['accs'].avg
+        pq = self.logger_val.info['metrics']['PQ'].avg
+        
 
         self.logger_val.logger(
             epoch, epoch, i, len(data_loader), 
@@ -239,7 +252,7 @@ class SegmentationNeuralNet(NeuralNetAbstract):
             for k in range(prob.shape[0]):                
                 self.visheatmap.show('Heat map {}'.format(k), prob.cpu()[k].numpy() )
         
-        return acc
+        return pq
 
 
     def test(self, data_loader ):
