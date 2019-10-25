@@ -34,7 +34,7 @@ EXP_NAME='baseline_'$ARCH'_'$LOSS'_'$OPT'_'$NAMEDATASET'_0001'
 
 
 ## execute
-python ../train.py \
+CUDA_VISIBLE_DEVICES=0,1,2,3 python ../train.py \
 $DATA/$NAMEDATASET \
 --project=$PROJECT \
 --name=$EXP_NAME \

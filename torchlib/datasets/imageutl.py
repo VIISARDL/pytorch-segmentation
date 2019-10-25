@@ -14,8 +14,8 @@ from pytvision.datasets.imageutl import dataProvide
 
 from . import utility as utl
 
-trainfile='stage1_train'
-testfile='stage1_test'
+trainfile='train/images'
+testfile='test/images'
 testfilefinal='stage2_test_final'
 
 
@@ -151,6 +151,7 @@ class dsxbProvide(dataProvide):
         data = sorted(data.items())
         self.data = [ v for k,v in data ]
 
+        
 class dsxbExProvide(dataProvide):
     '''
     Mnagement for Data Science Bowl image dataset

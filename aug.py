@@ -43,7 +43,7 @@ def get_transforms_aug( size_input=256, size_crop=512 ):
         #------------------------------------------------------------------
         #Resize
         #             
-        mtrans.RandomCrop( (size_crop, size_crop), limit=10, padding_mode=cv2.BORDER_REFLECT_101  ),        
+        #mtrans.RandomCrop( (size_crop, size_crop), limit=10, padding_mode=cv2.BORDER_REFLECT_101  ),        
         mtrans.ToResize( (size_input, size_input), resize_mode='square', padding_mode=cv2.BORDER_REFLECT_101 ),
         #mtrans.ToPad( 5 , 5, padding_mode=cv2.BORDER_REFLECT_101 ),
                        
@@ -64,9 +64,9 @@ def get_transforms_aug( size_input=256, size_crop=512 ):
         mtrans.ToRandomTransform( mtrans.RandomBrightness( factor=0.25 ), prob=0.50 ),
         mtrans.ToRandomTransform( mtrans.RandomContrast( factor=0.25 ), prob=0.50 ),
         mtrans.ToRandomTransform( mtrans.RandomGamma( factor=0.25 ), prob=0.50 ),
-        #mtrans.ToRandomTransform( mtrans.RandomRGBPermutation(), prob=0.50 ),
+        mtrans.ToRandomTransform( mtrans.RandomRGBPermutation(), prob=0.50 ),
         #mtrans.ToRandomTransform( mtrans.CLAHE(), prob=0.25 ),
-        #mtrans.ToRandomTransform(mtrans.ToGaussianBlur( sigma=0.05 ), prob=0.25 ),
+        mtrans.ToRandomTransform(mtrans.ToGaussianBlur( sigma=0.05 ), prob=0.25 ),
         
         #------------------------------------------------------------------
         mtrans.ToTensor(),
@@ -78,7 +78,7 @@ def get_transforms_aug( size_input=256, size_crop=512 ):
 
 def get_transforms_det(size_input=256, size_crop=512):    
     return transforms.Compose([   
-        mtrans.RandomCrop( (size_crop, size_crop), limit=10, padding_mode=cv2.BORDER_REFLECT_101  ),
+        #mtrans.RandomCrop( (size_crop, size_crop), limit=10, padding_mode=cv2.BORDER_REFLECT_101  ),
         mtrans.ToResize( (size_input, size_input), resize_mode='square', padding_mode=cv2.BORDER_REFLECT_101  ),
         #mtrans.ToPad( 5 , 5, padding_mode=cv2.BORDER_REFLECT_101 ),        
         mtrans.ToTensor(),

@@ -152,8 +152,8 @@ class SegmentationNeuralNet(NeuralNetAbstract):
             
             # update
             self.logger_train.update(
-                {'loss': loss.data[0] },
-                {'accs': accs, 'dices': dices },      
+                {'loss': loss.item() },
+                {'accs': accs.item(), 'dices': dices.item() },      
                 batch_size,
                 )
             
@@ -200,8 +200,8 @@ class SegmentationNeuralNet(NeuralNetAbstract):
 
                 # update
                 self.logger_val.update( 
-                    {'loss': loss.data[0] },
-                    {'accs': accs, 'dices': dices },      
+                    {'loss': loss.item() },
+                    {'accs': accs.item(), 'dices': dices.item() },      
                     batch_size,          
                     )
 
@@ -230,9 +230,9 @@ class SegmentationNeuralNet(NeuralNetAbstract):
         if epoch % self.view_freq == 0:
             
             prob = F.softmax(outputs, dim=1)
-            prob = prob.data[0]
+            prob = prob[0, ... ]
             maxprob = torch.argmax(prob, 0)
-            
+             
             self.visheatmap.show('Label', targets.data.cpu()[0].numpy()[1,:,:] )
             self.visheatmap.show('Weight map', weights.data.cpu()[0].numpy()[0,:,:])
             self.visheatmap.show('Image', inputs.data.cpu()[0].numpy()[0,:,:])

@@ -69,7 +69,37 @@ def delete_black_layer( masks ):
     return newmasks
 
 
+def imcrop( image, cropsize, top, left ):
+    #if mult channel
+    bchannel = False
+    if len(image.shape) != 3:
+        image = image[:,:,np.newaxis ]
+        bchannel = True    
+    h, w, c = image.shape
+    new_h, new_w = cropsize
+    imagecrop = image[top:top + new_h, left:left + new_w, : ]
+    if bchannel:
+        imagecrop = imagecrop[:,:,0]
+    return imagecrop
 
+def randomcrop(image, label, cropsize):
+    h,w = image.shape[:2]
+    new_h, new_w = cropsize
+    top  = np.random.randint( h - new_h )
+    left = np.random.randint( w - new_w )
+    image = imcrop( image, cropsize, top, left)
+    label = imcrop( label, cropsize, top, left)
+    return image, label
+
+def imrandomcrop(image, label, cropsize, tarea=10):
+    barea = False    
+    while barea==False:
+        image_t, label_t = randomcrop(image, label, cropsize )
+        masks = (label_t.transpose((2,0,1))>0).astype(np.uint32)
+        masks = np.array([ ndimage.morphology.binary_fill_holes(x) for x in masks ])
+        masks = delete_black_layer(masks)
+        barea = np.sum(masks) > tarea
+    return image_t, label_t, masks
 
 
 
