@@ -11,6 +11,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
 from torchvision import transforms, utils
+import torchvision
 import torch.backends.cudnn as cudnn
 
 # PYTVISION MODULE
@@ -22,10 +23,29 @@ from pytvision import visualization as view
 from torchlib.datasets import dsxbdata
 from torchlib.segneuralnet import SegmentationNeuralNet
 
-from aug import get_transforms_aug, get_transforms_det, get_simple_transforms
+from aug import get_transforms_aug, get_transforms_det, get_simple_transforms, get_transforms_geom_color
 
 from argparse import ArgumentParser
 import datetime
+from matplotlib import pyplot as plt
+
+
+class NormalizeInverse(torchvision.transforms.Normalize):
+    """
+    Undoes the normalization and returns the reconstructed images in the input domain.
+    """
+
+    def __init__(self, mean = (0.485, 0.456, 0.406), std  = (0.229, 0.224, 0.225)):
+        mean     = torch.as_tensor(mean)
+        std      = torch.as_tensor(std)
+        std_inv  = 1 / (std + 1e-7)
+        mean_inv = -mean * std_inv
+        super().__init__(mean=mean_inv, std=std_inv)
+
+    def __call__(self, tensor):
+        return super().__call__(tensor.clone())
+
+n = NormalizeInverse()
 
 def arg_parser():
     """Arg parser"""    
@@ -151,39 +171,63 @@ def main():
         
     # datasets
     # training dataset
-    train_data = dsxbdata.NucleiDataset(
+    train_data = dsxbdata.GenericDataset(
         args.data, 
-        dsxbdata.train, 
-        folders_contours=folders_contours,
+        'train_single', 
+        #folders_contours=folders_contours,
+        count=count_train,
+        num_channels=num_channels,
+        transform=get_transforms_geom_color(),
+    )
+
+    """
+    train_data = dsxbdata.TCellsDataset(
+        args.data, 
+        "train_single", 
         count=count_train,
         num_channels=num_channels,
         transform=get_simple_transforms(),
         )
-
+    """
+    
     train_loader = DataLoader(train_data, batch_size=args.batch_size_train, shuffle=True, 
         num_workers=args.workers, pin_memory=network.cuda, drop_last=True )
     
-    # validate dataset
-    val_data = dsxbdata.NucleiDataset(
+    val_data = dsxbdata.GenericDataset(
         args.data, 
         "validation", 
-        folders_contours=folders_contours,
+        #folders_contours=folders_contours,
+        count=count_test,
+        num_channels=num_channels,
+        transform=get_simple_transforms(),
+    )
+        
+    # validate dataset
+    """val_data = dsxbdata.TCellsDataset(
+        args.data, 
+        "validation", 
         count=count_test,
         num_channels=num_channels,
         transform=get_simple_transforms(),
         )
+"""
+    val_loader = DataLoader(val_data, batch_size=args.batch_size_test, shuffle=False, 
+        num_workers=args.workers, pin_memory=network.cuda, drop_last=False)
+    print("*"*60, args.batch_size_train, args.batch_size_test, '*'*61)
+    
 
-    val_loader = DataLoader(val_data, batch_size=args.batch_size_test, shuffle=True, 
-        num_workers=args.workers, pin_memory=network.cuda, drop_last=True)
-       
+        
     # print neural net class
     print('SEG-Torch: {}'.format(datetime.datetime.now()) )
     print(network)
-
     # training neural net
+    def count_parameters(model):
+
+        return sum(p.numel() for p in model.net.parameters() if p.requires_grad)
+
+    print('N Param: ', count_parameters(network))
     network.fit( train_loader, val_loader, args.epochs, args.snapshot )
-    
-               
+                   
     print("Optimization Finished!")
     print("DONE!!!")
 

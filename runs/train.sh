@@ -2,29 +2,38 @@
 
 # parameters
 DATA=$HOME/.datasets
-NAMEDATASET='cambiaext'
+#NAMEDATASET='U2OS_1_0_1'
+NAMEDATASET='TCells_2_0_1'
+#NAMEDATASET='Kaggle2018_1_0_0'
+
 PROJECT='../out/netruns'
-EPOCHS=120
-BATCHSIZETRAIN=45
-BATCHSIZETEST=45
+EPOCHS=100
+BATCHSIZETRAIN=1
+BATCHSIZETEST=1
 LEARNING_RATE=0.00001
 MOMENTUM=0.5
 PRINT_FREQ=100
-WORKERS=30
-RESUME='chk000015.pth.tar' #model_best, chk000000
+WORKERS=0
+RESUME='model_best.pth.tar' #model_best, chk000000
 GPU=0
-ARCH='unetresnet34'
-LOSS='mcedice'
+
+#ARCH='albunet'
+#ARCH='unetvgg16'
+ARCH='segnet'
+#ARCH='unetpad'
+#ARCH='unetresnet34'
+
+LOSS='ce'
 OPT='adam'
 SCHEDULER='fixed'
-SNAPSHOT=5
-COUNTTRAIN=50000
-COUNTTEST=5000
+SNAPSHOT=20 #20 #5
+COUNTTRAIN=1000 #1000
+COUNTTEST=10 #10 #7
 IMAGECROP=512
 IMAGESIZE=256 #256 #64
 NUMCHANNELS=3
 NUMCLASSES=3
-EXP_NAME='baseline_'$ARCH'_'$LOSS'_'$OPT'_'$NAMEDATASET'_0001'
+EXP_NAME='baseline_'$ARCH'_'$LOSS'_'$OPT'_'$NAMEDATASET'_0005_water'
 
 
 # rm -rf $PROJECT/$EXP_NAME/$EXP_NAME.log
@@ -59,6 +68,7 @@ $DATA/$NAMEDATASET \
 --image-size=$IMAGESIZE \
 --image-crop=$IMAGECROP \
 --finetuning \
---parallel \
 2>&1 | tee -a $PROJECT/$EXP_NAME/$EXP_NAME.log \
 
+
+#--parallel \

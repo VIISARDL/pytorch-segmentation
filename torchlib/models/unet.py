@@ -1,7 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.init as init
+import torch.nn.functional as F
+
 import math
+
 
 
 __all__ = ['UNet', 'unet']
@@ -15,102 +18,112 @@ def unet(pretrained=False, **kwargs):
         #model.load_state_dict(model_zoo.load_url(model_urls['unet']))
     return model
 
-
 class UNet(nn.Module):
-
-    def __init__(self, num_classes=1, in_channels=3, is_deconv=False, is_batchnorm=False):
+    def __init__(self, in_channels, num_classes):
         super(UNet, self).__init__()
-        self.is_deconv = is_deconv
-        self.in_channels = in_channels
-        self.is_batchnorm = is_batchnorm
-
-        filters = [64, 128, 256, 512, 1024]
-
-        self.down1 = unetDown(self.in_channels, filters[0], self.is_batchnorm)
-        self.down2 = unetDown(filters[0], filters[1], self.is_batchnorm)
-        self.down3 = unetDown(filters[1], filters[2], self.is_batchnorm)
-        self.down4 = unetDown(filters[2], filters[3], self.is_batchnorm)
-        
-        self.center = unetConv2(filters[3], filters[4], self.is_batchnorm)
-
-        self.up4 = unetUp(filters[4], filters[3], self.is_deconv)
-        self.up3 = unetUp(filters[3], filters[2], self.is_deconv)
-        self.up2 = unetUp(filters[2], filters[1], self.is_deconv)
-        self.up1 = unetUp(filters[1], filters[0], self.is_deconv)
-        self.final = nn.Conv2d(filters[0], num_classes, 1)
-
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                init.xavier_normal(m.weight)
-                init.constant(m.bias, 0)
-            elif isinstance(m, nn.BatchNorm2d):
-                m.weight.data.fill_(1)
-                m.bias.data.zero_()
+        self.inc = inconv(in_channels, 64)
+        self.down1 = down(64, 128)
+        self.down2 = down(128, 256)
+        self.down3 = down(256, 512)
+        self.down4 = down(512, 512)
+        self.up1 = up(1024, 256)
+        self.up2 = up(512, 128)
+        self.up3 = up(256, 64)
+        self.up4 = up(128, 64)
+        self.outc = outconv(64, num_classes)
 
     def forward(self, x):
+        x1 = self.inc(x)
+        x2 = self.down1(x1)
+        x3 = self.down2(x2)
+        x4 = self.down3(x3)
+        x5 = self.down4(x4)
+        x = self.up1(x5, x4)
+        x = self.up2(x, x3)
+        x = self.up3(x, x2)
+        x = self.up4(x, x1)
+        x = self.outc(x)
+        return F.sigmoid(x)
 
-        down1,befdown1 = self.down1(x)
-        down2,befdown2 = self.down2(down1)
-        down3,befdown3 = self.down3(down2)
-        down4,befdown4 = self.down4(down3)       
-        center = self.center(down4)
-        up4 = self.up4(befdown4, center)
-        up3 = self.up3(befdown3, up4)
-        up2 = self.up2(befdown2, up3)
-        up1 = self.up1(befdown1, up2)
-        y = self.final(up1)
+    
+class double_conv(nn.Module):
+    '''(conv => BN => ReLU) * 2'''
+    def __init__(self, in_ch, out_ch):
+        super(double_conv, self).__init__()
+        self.conv = nn.Sequential(
+            nn.Conv2d(in_ch, out_ch, 3, padding=1),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_ch, out_ch, 3, padding=1),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True)
+        )
 
-        return y
+    def forward(self, x):
+        x = self.conv(x)
+        return x
 
 
-class unetConv2(nn.Module):
-    def __init__(self, in_size, out_size, is_batchnorm):
-        super(unetConv2, self).__init__()
+class inconv(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super(inconv, self).__init__()
+        self.conv = double_conv(in_ch, out_ch)
 
-        if is_batchnorm:
-            self.conv1 = nn.Sequential(nn.Conv2d(in_size, out_size, 3, 1, 0),
-                                       nn.BatchNorm2d(out_size),
-                                       nn.ReLU(),)
-            self.conv2 = nn.Sequential(nn.Conv2d(out_size, out_size, 3, 1, 0),
-                                       nn.BatchNorm2d(out_size),
-                                       nn.ReLU(),)
+    def forward(self, x):
+        x = self.conv(x)
+        return x
+
+
+class down(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super(down, self).__init__()
+        self.mpconv = nn.Sequential(
+            nn.MaxPool2d(2),
+            double_conv(in_ch, out_ch)
+        )
+
+    def forward(self, x):
+        x = self.mpconv(x)
+        return x
+
+
+class up(nn.Module):
+    def __init__(self, in_ch, out_ch, bilinear=True):
+        super(up, self).__init__()
+
+        #  would be a nice idea if the upsampling could be learned too,
+        #  but my machine do not have enough memory to handle all those weights
+        if bilinear:
+            self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
         else:
-            self.conv1 = nn.Sequential(nn.Conv2d(in_size, out_size, 3, 1, 0),
-                                       nn.ReLU(),)
-            self.conv2 = nn.Sequential(nn.Conv2d(out_size, out_size, 3, 1, 0),
-                                       nn.ReLU(),)
-    def forward(self, inputs):
-        outputs = self.conv1(inputs)
-        outputs = self.conv2(outputs)
-        return outputs
+            self.up = nn.ConvTranspose2d(in_ch//2, in_ch//2, 2, stride=2)
+
+        self.conv = double_conv(in_ch, out_ch)
+
+    def forward(self, x1, x2):
+        x1 = self.up(x1)
+        
+        # input is CHW
+        diffY = x2.size()[2] - x1.size()[2]
+        diffX = x2.size()[3] - x1.size()[3]
+
+        x1 = F.pad(x1, (diffX // 2, diffX - diffX//2,
+                        diffY // 2, diffY - diffY//2))
+        
+        # for padding issues, see 
+        # https://github.com/HaiyongJiang/U-Net-Pytorch-Unstructured-Buggy/commit/0e854509c2cea854e247a9c615f175f76fbb2e3a
+        # https://github.com/xiaopeng-liao/Pytorch-UNet/commit/8ebac70e633bac59fc22bb5195e513d5832fb3bd
+
+        x = torch.cat([x2, x1], dim=1)
+        x = self.conv(x)
+        return x
 
 
-class unetDown(nn.Module):
-    def __init__(self, in_size, out_size, is_batchnorm):
-        super(unetDown, self).__init__()
-        self.conv = unetConv2(in_size, out_size, is_batchnorm)
-        self.down = nn.MaxPool2d(2, 2)
+class outconv(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super(outconv, self).__init__()
+        self.conv = nn.Conv2d(in_ch, out_ch, 1)
 
-    def forward(self, inputs):
-        outputs = self.conv(inputs)
-        outputs1 = self.down(outputs)
-        return outputs1,outputs
-
-
-class unetUp(nn.Module):
-    def __init__(self, in_size, out_size, is_deconv):
-        super(unetUp, self).__init__()
-        self.conv = unetConv2(in_size, out_size, False)
-        if is_deconv:
-            self.up = nn.ConvTranspose2d(in_size, out_size, 2)
-        else:
-            self.up = nn.Upsample(scale_factor=2,mode='bilinear')
-
-    def forward(self, inputs1, inputs2):
-        ch_select=inputs2.size()[1] // 2
-        up_in=inputs2[:,0:ch_select,:,:]
-        outputs2 = self.up(up_in)
-        offset = inputs1.size()[2] - outputs2.size()[2]
-        padding = [offset // 2, offset // 2 ]
-        outputs1 = inputs1[:,:,padding[0]:-padding[0],padding[1]:-padding[1]]
-        return self.conv(torch.cat([outputs1, outputs2], 1))
+    def forward(self, x):
+        x = self.conv(x)
+        return x

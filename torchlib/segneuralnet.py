@@ -136,6 +136,8 @@ class SegmentationNeuralNet(NeuralNetAbstract):
             if self.cuda:
                 inputs  = inputs.cuda() 
                 targets = targets.cuda() 
+            #print(inputs.shape)
+            #breakpoint()
             #print(inputs.shape, targets.shape)
                 
             # fit (forward)            
@@ -143,12 +145,15 @@ class SegmentationNeuralNet(NeuralNetAbstract):
 
             # measure accuracy and record loss
             loss  = self.criterion(outputs, targets, weights)            
+            
             accs  = self.accuracy(outputs, targets)
             dices = self.dice(outputs, targets)
             #pq    = metrics.pq_metric(outputs.cpu().detach().numpy(), targets.cpu().detach().numpy())
-              
+            #pq, n_cells  = metrics.pq_metric(targets, outputs)
+                
             # optimizer
             self.optimizer.zero_grad()
+            
             (batch_size*loss).backward() #batch_size
             self.optimizer.step()
             
@@ -174,6 +179,8 @@ class SegmentationNeuralNet(NeuralNetAbstract):
     def evaluate(self, data_loader, epoch=0):
         
         # reset loader
+        pq_sum      = 0
+        total_cells = 0
         self.logger_val.reset()
         batch_time = AverageMeter()
 
@@ -187,9 +194,12 @@ class SegmentationNeuralNet(NeuralNetAbstract):
                 inputs, targets, weights = sample['image'], sample['label'], None 
                 batch_size = inputs.shape[0]
 
+                #print(inputs.shape)
+
                 if self.cuda:
                     inputs  = inputs.cuda()
                     targets = targets.cuda()
+                #print(inputs.shape)
                                  
                 # fit (forward)
                 outputs = self.net(inputs)
@@ -198,9 +208,19 @@ class SegmentationNeuralNet(NeuralNetAbstract):
                 loss  = self.criterion(outputs, targets, weights)   
                 accs  = self.accuracy(outputs, targets )
                 dices = self.dice( outputs, targets )   
-
-                pq    = metrics.pq_metric(targets, outputs)
-              
+                
+                targets_np = targets[0][1].cpu().numpy().astype(int)
+                if epoch == 0:
+                    pq = 0
+                    n_cells = 1
+                else:
+                    #pq, n_cells    = metrics.pq_metric(targets, outputs)
+                    all_metrics, n_cells, _ = metrics.get_metrics_fidel(targets_np,outputs)
+                    pq = all_metrics['pq']
+        
+                pq_sum += pq * n_cells
+                total_cells += n_cells
+                  
                 # measure elapsed time
                 batch_time.update(time.time() - end)
                 end = time.time()
@@ -225,9 +245,14 @@ class SegmentationNeuralNet(NeuralNetAbstract):
                         )
 
         #save validation loss
+        if n_cells == 0:
+            pq_weight = 0
+        else:
+            pq_weight = pq_sum / n_cells 
+
         self.vallosses = self.logger_val.info['loss']['loss'].avg
         acc = self.logger_val.info['metrics']['accs'].avg
-        pq = self.logger_val.info['metrics']['PQ'].avg
+        #pq = pq_weight
         
 
         self.logger_val.logger(
@@ -241,7 +266,7 @@ class SegmentationNeuralNet(NeuralNetAbstract):
         #vizual_freq
         if epoch % self.view_freq == 0:
             
-            prob = F.softmax(outputs, dim=1)
+            prob = F.softmax(outputs.cpu(), dim=1)
             prob = prob.data[0]
             maxprob = torch.argmax(prob, 0)
             
@@ -252,7 +277,9 @@ class SegmentationNeuralNet(NeuralNetAbstract):
             for k in range(prob.shape[0]):                
                 self.visheatmap.show('Heat map {}'.format(k), prob.cpu()[k].numpy() )
         
-        return pq
+
+        
+        return pq_weight
 
 
     def test(self, data_loader ):
@@ -337,6 +364,10 @@ class SegmentationNeuralNet(NeuralNetAbstract):
             self.criterion = nloss.WeightedMCEFocalloss()
         elif loss == 'mcedice':
             self.criterion = nloss.MCEDiceLoss()  
+        elif loss == 'bce':
+            self.criterion = nloss.BCELoss()
+        elif loss == 'ce':
+            self.criterion = nloss.SimpleCrossEntropyLossnn()
         else:
             assert(False)
 

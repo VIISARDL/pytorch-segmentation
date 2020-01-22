@@ -10,3 +10,4 @@ from .fcn import *
 from .albu import *
 from .linknet import *
 from .segnet import *
+from .unetpad import *

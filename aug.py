@@ -75,6 +75,44 @@ def get_transforms_aug( size_input=256, size_crop=512 ):
         ])    
     
 
+def get_transforms_geom_color():        
+    return transforms.Compose([
+        
+        #------------------------------------------------------------------
+        #Resize
+        #             
+        #mtrans.RandomCrop( (size_crop, size_crop), limit=10, padding_mode=cv2.BORDER_REFLECT_101  ),        
+        #mtrans.ToResize( (size_input, size_input), resize_mode='square', padding_mode=cv2.BORDER_REFLECT_101 ),
+        #mtrans.ToPad( 5 , 5, padding_mode=cv2.BORDER_REFLECT_101 ),
+                       
+        #------------------------------------------------------------------
+        #Geometric 
+        
+        mtrans.ToRandomTransform( mtrans.VFlip(), prob=0.5 ),
+        mtrans.ToRandomTransform( mtrans.HFlip(), prob=0.5 ),
+        mtrans.RandomScale(factor=0.2, padding_mode=cv2.BORDER_REFLECT_101 ), 
+        mtrans.ToRandomTransform( mtrans.RandomGeometricalTransform( angle=45, translation=0.2, warp=0.02, padding_mode=cv2.BORDER_REFLECT_101 ), prob=0.5 ),
+        mtrans.ToRandomTransform( mtrans.RandomElasticDistort( size_grid=32, deform=12, padding_mode=cv2.BORDER_REFLECT_101 ), prob=0.5 ),
+        #mtrans.ToResizeUNetFoV(imsize, cv2.BORDER_REFLECT_101),
+        
+        
+        #------------------------------------------------------------------
+        #Colors 
+        
+        mtrans.ToRandomTransform( mtrans.RandomBrightness( factor=0.25 ), prob=0.50 ),
+        mtrans.ToRandomTransform( mtrans.RandomContrast( factor=0.25 ), prob=0.50 ),
+        mtrans.ToRandomTransform( mtrans.RandomGamma( factor=0.25 ), prob=0.50 ),
+        #mtrans.ToRandomTransform( mtrans.RandomRGBPermutation(), prob=0.50 ),
+        #mtrans.ToRandomTransform( mtrans.CLAHE(), prob=0.25 ),
+        #mtrans.ToRandomTransform(mtrans.ToGaussianBlur( sigma=0.05 ), prob=0.25 ),
+        
+        #------------------------------------------------------------------
+        mtrans.ToTensor(),
+        normalize,
+        
+        ])    
+    
+
 
 def get_transforms_det(size_input=256, size_crop=512):    
     return transforms.Compose([   

@@ -8,7 +8,7 @@ from torch.utils.data import Dataset
 from pytvision.transforms.aumentation import  ObjectImageMaskAndWeightTransform, ObjectImageAndMaskTransform
 from pytvision.datasets import utility
 
-from .imageutl import dsxbExProvide, nucleiProvide2
+from .imageutl import dsxbExProvide, nucleiProvide2, TCellsProvide
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -207,6 +207,137 @@ class NucleiDataset(Dataset):
         label_t[:,:,2] = (contours > 128)     
 
         obj = ObjectImageAndMaskTransform( image_t, label_t  )
+        if self.transform: 
+            obj = self.transform( obj )
+        return obj.to_dict()
+
+    
+class TCellsDataset(Dataset):
+
+    def __init__(self, 
+        base_folder, 
+        sub_folder,  
+        folders_images='images',
+        folders_labels='labels',
+        folders_contours='touchs',
+        ext='png',
+        transform=None,
+        count=1000,
+        num_channels=3,
+        ):
+
+        self.data = TCellsProvide(
+                base_folder, 
+                sub_folder, 
+                folders_images, 
+                folders_labels,
+                ext
+                )
+
+
+        self.transform = transform  
+        self.count = count  
+        self.num_channels = num_channels
+
+    def __len__(self):
+        return self.count  
+
+    def __getitem__(self, idx):   
+
+        idx = idx % len(self.data)
+        image, label = self.data[idx] 
+        image_t = utility.to_channels(image, ch=self.num_channels )   
+
+        label_t = (label > 127).astype(np.uint8)
+
+        obj = ObjectImageAndMaskTransform( image_t, label_t  )
+        if self.transform: 
+            obj = self.transform( obj )
+        return obj.to_dict()
+
+class TCellsDataset2(Dataset):
+
+    def __init__(self, 
+        base_folder, 
+        sub_folder,  
+        folders_images='images',
+        folders_labels='labels',
+        folders_contours='touchs',
+        ext='png',
+        transform=None,
+        count=1000,
+        num_channels=3,
+        ):
+
+        self.data = TCellsProvide(
+                base_folder, 
+                sub_folder, 
+                folders_images, 
+                folders_labels,
+                ext
+                )
+
+
+        self.transform = transform  
+        self.count = count  
+        self.num_channels = num_channels
+
+    def __len__(self):
+        return self.count  
+
+    def __getitem__(self, idx):   
+
+        idx = idx % len(self.data)
+        image, label = self.data[idx] 
+        image_t = utility.to_channels(image, ch=self.num_channels )   
+        label_t = np.zeros_like( label )
+        label_t[:,:,0] = (label[...,0] == 0)
+        label_t[:,:,1] = (label[...,0] == 1)
+        label_t[:,:,2] = (label[...,0] >= 2)     
+        
+        obj = ObjectImageAndMaskTransform( image_t, label_t  )
+        if self.transform: 
+            obj = self.transform( obj )
+        return obj.to_dict()
+
+
+class GenericDataset(Dataset):
+
+    def __init__(self, 
+        base_folder, 
+        sub_folder,  
+        folders_images='images',
+        folders_labels='labels',
+        ext='png',
+        transform=None,
+        count=1000,
+        num_channels=3,
+        ):
+
+        self.data = TCellsProvide(
+                base_folder, 
+                sub_folder, 
+                folders_images, 
+                folders_labels,
+                ext
+                )
+
+
+        self.transform = transform  
+        self.count = count  
+        self.num_channels = num_channels
+
+    def __len__(self):
+        return self.count  
+
+    def __getitem__(self, idx):   
+
+        idx = idx % len(self.data)
+        image, label = self.data[idx] 
+        label = (label == 255).astype(float)
+        image_t = utility.to_channels(image, ch=self.num_channels )   
+        
+        obj = ObjectImageAndMaskTransform( image_t, label  )
         if self.transform: 
             obj = self.transform( obj )
         return obj.to_dict()
