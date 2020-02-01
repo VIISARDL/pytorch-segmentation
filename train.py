@@ -111,7 +111,9 @@ def arg_parser():
                         help='image size')
     
     parser.add_argument('--parallel', action='store_true', default=False,
-                    help='Parallel')
+                    help='Parallel')    
+    parser.add_argument('--post-method', default='map', type=str,
+                        help='Post processing method, | map | th | wts')
     return parser
 
 
@@ -128,6 +130,8 @@ def main():
     num_channels = args.num_channels    
     count_train  = args.count_train #10000
     count_test   = args.count_test #5000
+    post_method  = args.post_method
+    
     folders_contours ='touchs'
         
     print('Baseline clasification {}!!!'.format(datetime.datetime.now()))
@@ -178,6 +182,7 @@ def main():
         count=count_train,
         num_channels=num_channels,
         transform=get_transforms_geom_color(),
+        use_weight=True
     )
 
     """
@@ -197,9 +202,10 @@ def main():
         args.data, 
         "validation", 
         #folders_contours=folders_contours,
-        count=count_test,
+        count=None,
         num_channels=num_channels,
         transform=get_simple_transforms(),
+        use_weight=True
     )
         
     # validate dataset
