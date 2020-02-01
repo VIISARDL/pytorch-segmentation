@@ -160,23 +160,23 @@ def pq_metric(y_true, y_pred):
     #breakpoint()
     return pq_val, n_cells
 
-max_post  = post_processing_func.MAP_post()
+map_post  = post_processing_func.MAP_post()
 th_post   = post_processing_func.TH_post()
 wts_post  = post_processing_func.WTS_post()
 pq_metric = PQ()
 
-def get_metrics_fidel(gt, outputs, post_label='th'):
+def get_metrics_fidel(gt, outputs, post_label='wts'):
     #gt = gt[0].cpu().numpy()
     out_np = outputs[0].cpu().numpy().transpose(1,2,0)
     
-    if post_label == 'max':
-        predictionlb, MAP, region, output = max_post(out_np)
+    if post_label == 'map':
+        predictionlb, MAP, region, output = map_post(out_np)
     elif post_label == 'th':
         predictionlb, MAP, region, output = th_post(out_np, theshold=0.5)
     elif post_label == 'wts':
         predictionlb, MAP, region, output = wts_post(out_np)
     else:
-        assert False #f"Get Metrics Fidel Error {post_label}"
+        assert False, f"Get Metrics Fidel Error {post_label} -- expected map || th || tws"
     gt_, n_cells        = ndi.label(gt)
     
     results = pq_metric(predictionlb, gt_)

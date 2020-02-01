@@ -312,6 +312,7 @@ class GenericDataset(Dataset):
         transform=None,
         count=1000,
         num_channels=3,
+        use_weight=False,
         ):
 
         self.data = TCellsProvide(
@@ -319,25 +320,41 @@ class GenericDataset(Dataset):
                 sub_folder, 
                 folders_images, 
                 folders_labels,
-                ext
+                ext,
+                use_weight
                 )
 
 
-        self.transform = transform  
-        self.count = count  
+        self.transform    = transform  
+        self.count        = count  
         self.num_channels = num_channels
+        self.use_weight   = use_weight
 
     def __len__(self):
+        if self.count is None:
+            return len(self.data)
+
         return self.count  
 
     def __getitem__(self, idx):   
 
         idx = idx % len(self.data)
-        image, label = self.data[idx] 
+        data = self.data[idx]
+        if self.use_weight:
+            image, label, weight = data
+        else:
+            image, label = data
+            
         label = (label == 255).astype(float)
         image_t = utility.to_channels(image, ch=self.num_channels )   
         
-        obj = ObjectImageAndMaskTransform( image_t, label  )
+        
+        if self.use_weight:
+            obj = ObjectImageMaskAndWeightTransform(image_t, label, weight)
+        else:
+            obj = ObjectImageAndMaskTransform( image_t, label  )
+        
+        
         if self.transform: 
             obj = self.transform( obj )
         return obj.to_dict()

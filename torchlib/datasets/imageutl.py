@@ -511,10 +511,12 @@ class TCellsProvide(dataProvide):
         folders_images='images',
         folders_labels='labels',
         ext='png',
+        use_weight=False
         ):
         super(TCellsProvide, self).__init__( );        
         base_folder = os.path.expanduser( base_folder )
-                
+        self.use_weight  = use_weight
+        
         self.path = base_folder
         self.subpath = sub_folder
         self.folders_images = folders_images
@@ -522,14 +524,29 @@ class TCellsProvide(dataProvide):
         
         self.pathimages   = os.path.join( base_folder, sub_folder, folders_images   )
         self.pathlabels   = os.path.join( base_folder, sub_folder, folders_labels   )
-        self.data = [             
-            (
-                f, 
-                os.path.join(self.pathimages,   '{}'.format(f) ),
-                os.path.join(self.pathlabels,   '{}'.format(f) ),
-            )
-            for f in sorted(os.listdir(self.pathimages)) if f.split('.')[-1] == ext             
-            ];
+                
+        if self.use_weight:
+            self.pathweight = os.path.join( base_folder, sub_folder, "weights")
+            self.data = [             
+                (
+                    f, 
+                    os.path.join(self.pathimages,   '{}'.format(f) ),
+                    os.path.join(self.pathlabels,   '{}'.format(f) ),
+                    os.path.join(self.pathweight,   '{}'.format(f.replace(ext, "npz")) )                    
+                )
+                for f in sorted(os.listdir(self.pathimages)) if f.split('.')[-1] == ext             
+                ];
+
+            
+        else:
+            self.data = [             
+                (
+                    f, 
+                    os.path.join(self.pathimages,   '{}'.format(f) ),
+                    os.path.join(self.pathlabels,   '{}'.format(f) ),
+                )
+                for f in sorted(os.listdir(self.pathimages)) if f.split('.')[-1] == ext             
+                ];
 
     def getid(self): return self.data[self.index][0]
 
@@ -547,5 +564,11 @@ class TCellsProvide(dataProvide):
         #load label
         label_pathname = self.data[i][2]; 
         label = cv2.imread(label_pathname)
+        
+        if self.use_weight:
+            weight_pathname = self.data[i][3]
+            weight          = np.load(weight_pathname)['w']
+            weight          = np.stack((weight, weight, weight), axis=2)
+            return image, label, weight
 
         return image, label
