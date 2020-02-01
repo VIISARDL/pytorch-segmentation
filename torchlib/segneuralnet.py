@@ -130,12 +130,14 @@ class SegmentationNeuralNet(NeuralNetAbstract):
             # measure data loading time
             data_time.update(time.time() - end)
             # get data (image, label, weight)
-            inputs, targets, weights = sample['image'], sample['label'], None
+            inputs, targets, weights = sample['image'], sample['label'], sample['weight']
             batch_size = inputs.shape[0]
 
             if self.cuda:
                 inputs  = inputs.cuda() 
                 targets = targets.cuda() 
+                weights = weights.cuda()
+                
             #print(inputs.shape)
             #breakpoint()
             #print(inputs.shape, targets.shape)
@@ -191,7 +193,7 @@ class SegmentationNeuralNet(NeuralNetAbstract):
             for i, sample in enumerate(data_loader):
                 
                 # get data (image, label)
-                inputs, targets, weights = sample['image'], sample['label'], None 
+                inputs, targets, weights = sample['image'], sample['label'], sample['weight'] 
                 batch_size = inputs.shape[0]
 
                 #print(inputs.shape)
@@ -199,6 +201,7 @@ class SegmentationNeuralNet(NeuralNetAbstract):
                 if self.cuda:
                     inputs  = inputs.cuda()
                     targets = targets.cuda()
+                    weights = weights.cuda()
                 #print(inputs.shape)
                                  
                 # fit (forward)

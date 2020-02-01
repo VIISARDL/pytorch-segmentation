@@ -165,7 +165,7 @@ th_post   = post_processing_func.TH_post()
 wts_post  = post_processing_func.WTS_post()
 pq_metric = PQ()
 
-def get_metrics_fidel(gt, outputs, post_label='wts'):
+def get_metrics_fidel(gt, outputs, post_label='map'):
     #gt = gt[0].cpu().numpy()
     out_np = outputs[0].cpu().numpy().transpose(1,2,0)
     

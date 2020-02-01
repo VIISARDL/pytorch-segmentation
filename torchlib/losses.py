@@ -4,7 +4,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-
 class WeightedMCEloss(nn.Module):
 
     def __init__(self ):
@@ -17,11 +16,12 @@ class WeightedMCEloss(nn.Module):
         weight = centercrop(weight, w, h )
         
         y_pred_log =  F.log_softmax(y_pred, dim=1)
-        breakpoint();
         logpy = torch.sum( weight * y_pred_log * y_true, dim=1 )
         #loss  = -torch.sum(logpy) / torch.sum(weight)
         loss  = -torch.mean(logpy)
         return loss
+
+    
 
 def getweightmap(label):
     lshape = label.shape
