@@ -145,7 +145,7 @@ def intersection_over_union_thresholds(y_true, y_pred):
         iouts.append(compute_eval_metric(y_t, y_p))
     return np.mean(iouts)
 
-def pq_metric(y_true, y_pred):
+def pq_metric_(y_true, y_pred):
     #breakpoint()
     pq = PQ()
     
@@ -178,7 +178,11 @@ def get_metrics_fidel(gt, outputs, post_label='map'):
     else:
         assert False, f"Get Metrics Fidel Error {post_label} -- expected map || th || tws"
     gt_, n_cells        = ndi.label(gt)
-    
-    results = pq_metric(predictionlb, gt_)
+    try:
+        results = pq_metric(predictionlb, gt_)
+    except:
+        print("Erro PQ Metrics, ret zero")
+        results =  {'precision':0.0,'recall':0.0,'fmeasure':0.0,'sq':0.0,'rq':0.0,'pq':0.0}
+
     results['n_cells'] = predictionlb.max()
     return results, n_cells, (predictionlb, MAP, region, output)
