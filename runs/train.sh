@@ -19,11 +19,16 @@ GPU=0
 
 #ARCH='albunet'
 #ARCH='unetvgg16'
-ARCH='segnet'
-#ARCH='unetpad'
+#ARCH='segnet'
+ARCH='unetpad'
 #ARCH='unetresnet34'
 
-LOSS='ce'
+#POST_METHOD="th"
+POST_METHOD="map"
+#POST_METHOD="wts"
+
+
+LOSS='wmce'
 OPT='adam'
 SCHEDULER='fixed'
 SNAPSHOT=20 #20 #5
@@ -33,7 +38,7 @@ IMAGECROP=512
 IMAGESIZE=256 #256 #64
 NUMCHANNELS=3
 NUMCLASSES=3
-EXP_NAME='baseline_'$ARCH'_'$LOSS'_'$OPT'_'$NAMEDATASET'_0005_water'
+EXP_NAME='baseline_'$ARCH'_'$LOSS'_'$OPT'_'$NAMEDATASET'_'$POST_METHOD'_0005'
 
 
 # rm -rf $PROJECT/$EXP_NAME/$EXP_NAME.log
@@ -67,6 +72,7 @@ $DATA/$NAMEDATASET \
 --arch=$ARCH \
 --image-size=$IMAGESIZE \
 --image-crop=$IMAGECROP \
+--post-method=$POST_METHOD \
 --finetuning \
 2>&1 | tee -a $PROJECT/$EXP_NAME/$EXP_NAME.log \
 
