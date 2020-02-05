@@ -153,6 +153,7 @@ class MAP_post(object):
 
 from skimage.feature import peak_local_max
 #from scipy.misc import imsave
+
 class WTS_post(object):
     def __init__(self,cellclass=1,diviclass=2):
         self.cellclass=cellclass
@@ -181,6 +182,7 @@ class WTS_post(object):
         predictionlb=watershed(-distance, markers, mask=(background_seed!=1))
         cellscount=np.max(predictionlb)
         predictionlbnew=np.zeros_like(predictionlb)
+        cell_val = 1
         for i in range(1,cellscount+1):
             cell= np.array( (predictionlb ==i) ).astype(int)
             cell= binary_fill_holes(cell)
@@ -189,8 +191,12 @@ class WTS_post(object):
                 props=regionprops(lcell)
                 marea = np.argmax( np.array([p.area for p in props ]) )
                 cell= (lcell== (marea+1))
-            predictionlbnew[cell]=i   
+            
+            if cell.sum():
+                predictionlbnew[cell]=cell_val
+                cell_val += 1
             
         region,prediction=inst2sem(predictionlbnew)
         
         return predictionlbnew, prediction,region, output
+wts_post  = WTS_post()
