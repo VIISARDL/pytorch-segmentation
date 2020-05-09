@@ -22,7 +22,7 @@ from pytvision import visualization as view
 from torchlib.datasets import dsxbdata
 from torchlib.segneuralnet import SegmentationNeuralNet
 
-from aug import get_transforms_aug, get_transforms_det
+from aug import get_transforms_aug, get_transforms_det, get_simple_transforms
 
 from argparse import ArgumentParser
 import datetime
@@ -151,26 +151,26 @@ def main():
         
     # datasets
     # training dataset
-    train_data = dsxbdata.DSXBExDataset(
+    train_data = dsxbdata.NucleiDataset(
         args.data, 
         dsxbdata.train, 
         folders_contours=folders_contours,
         count=count_train,
         num_channels=num_channels,
-        transform=get_transforms_aug(imsize, imcrop),
+        transform=get_simple_transforms(),
         )
 
     train_loader = DataLoader(train_data, batch_size=args.batch_size_train, shuffle=True, 
         num_workers=args.workers, pin_memory=network.cuda, drop_last=True )
     
     # validate dataset
-    val_data = dsxbdata.DSXBExDataset(
+    val_data = dsxbdata.NucleiDataset(
         args.data, 
-        dsxbdata.test, 
+        "validation", 
         folders_contours=folders_contours,
         count=count_test,
         num_channels=num_channels,
-        transform=get_transforms_det( imsize, imcrop ),
+        transform=get_simple_transforms(),
         )
 
     val_loader = DataLoader(val_data, batch_size=args.batch_size_test, shuffle=True, 

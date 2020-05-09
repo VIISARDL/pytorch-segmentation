@@ -171,10 +171,10 @@ class MCEDiceLoss(nn.Module):
         gamma = self.gamma
 
         # bce(all_channels) +  dice_loss(mask_channel) + dice_loss(border_channel)  
-        loss_all  = self.loss_mce( y_pred[:,:2,...], y_true[:,:2,...]).clamp(0,10) 
-        loss_fg   = self.loss_dice_fg( y_pred, y_true ).clamp(0,10) 
-        loss_th   = self.loss_dice_th( y_pred, y_true ).clamp(0,10)   
-        loss      = loss_all + alpha*loss_fg + gamma*loss_th         
+        loss_all  = self.loss_mce( y_pred[:,:2,...], y_true[:,:2,...]) 
+        loss_fg   = self.loss_dice_fg( y_pred, y_true )         
+        loss_th   = self.loss_dice_th( y_pred, y_true )  if y_true[:,2,... ].sum() > 0 else 0        
+        loss      = loss_all + alpha*loss_fg + gamma*loss_th     
         return loss
 
 

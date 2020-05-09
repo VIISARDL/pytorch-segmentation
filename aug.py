@@ -94,3 +94,9 @@ def get_transforms_test(size_input=256):
         mtrans.ToTensor(),
         normalize,
         ])
+
+def get_simple_transforms():
+    return transforms.Compose([
+        mtrans.ToTensor(),
+        normalize,      
+    ])

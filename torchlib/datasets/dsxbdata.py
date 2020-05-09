@@ -8,7 +8,7 @@ from torch.utils.data import Dataset
 from pytvision.transforms.aumentation import  ObjectImageMaskAndWeightTransform, ObjectImageAndMaskTransform
 from pytvision.datasets import utility
 
-from .imageutl import dsxbExProvide
+from .imageutl import dsxbExProvide, nucleiProvide2
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -164,3 +164,49 @@ class DSDataset(Dataset):
         return obj.to_dict()
 
 
+class NucleiDataset(Dataset):
+
+    def __init__(self, 
+        base_folder, 
+        sub_folder,  
+        folders_images='images',
+        folders_labels='labels',
+        folders_contours='touchs',
+        ext='png',
+        transform=None,
+        count=1000,
+        num_channels=3,
+        ):
+
+        self.data = nucleiProvide2(
+                base_folder, 
+                sub_folder, 
+                folders_images, 
+                folders_labels,
+                folders_contours,
+                ext
+                )
+
+
+        self.transform = transform  
+        self.count = count  
+        self.num_channels = num_channels
+
+    def __len__(self):
+        return self.count  
+
+    def __getitem__(self, idx):   
+
+        idx = idx % len(self.data)
+        image, label, contours = self.data[idx] 
+        image_t = utility.to_channels(image, ch=self.num_channels )   
+
+        label_t = np.zeros( (label.shape[0], label.shape[1], 3) )
+        label_t[:,:,0] = (label < 128)
+        label_t[:,:,1] = (label > 128)
+        label_t[:,:,2] = (contours > 128)     
+
+        obj = ObjectImageAndMaskTransform( image_t, label_t  )
+        if self.transform: 
+            obj = self.transform( obj )
+        return obj.to_dict()
